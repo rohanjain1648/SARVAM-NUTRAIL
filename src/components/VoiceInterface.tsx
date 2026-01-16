@@ -15,6 +15,21 @@ export default function VoiceInterface() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedLanguage, setSelectedLanguage] = useState<string>('hi-IN');
+
+    const languages = [
+        { code: 'hi-IN', name: 'Hindi' },
+        { code: 'en-IN', name: 'English' },
+        { code: 'bn-IN', name: 'Bengali' },
+        { code: 'gu-IN', name: 'Gujarati' },
+        { code: 'kn-IN', name: 'Kannada' },
+        { code: 'ml-IN', name: 'Malayalam' },
+        { code: 'mr-IN', name: 'Marathi' },
+        { code: 'od-IN', name: 'Odia' },
+        { code: 'pa-IN', name: 'Punjabi' },
+        { code: 'ta-IN', name: 'Tamil' },
+        { code: 'te-IN', name: 'Telugu' },
+    ];
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -44,12 +59,12 @@ export default function VoiceInterface() {
             mediaRecorder.start();
             setIsRecording(true);
 
-            // Auto-stop after 15 seconds to avoid Sarvam >30s limit
+            // Auto-stop after 25 seconds (Sarvam limit is 30s)
             setTimeout(() => {
                 if (mediaRecorder.state === 'recording') {
                     stopRecording();
                 }
-            }, 15000);
+            }, 25000);
         } catch (err) {
             console.error("Error accessing microphone:", err);
             setError("Could not access microphone. Please ensure permissions are granted.");
@@ -68,6 +83,7 @@ export default function VoiceInterface() {
         try {
             const formData = new FormData();
             formData.append('audio', audioBlob);
+            formData.append('language', selectedLanguage);
 
             const response = await axios.post('/api/chat', formData, {
                 headers: {
@@ -111,6 +127,20 @@ export default function VoiceInterface() {
 
     return (
         <div className="flex flex-col h-full max-w-2xl mx-auto p-4">
+
+            <div className="mb-4 flex justify-end">
+                <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    disabled={isRecording || isLoading}
+                    className="p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+                >
+                    {languages.map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.name}</option>
+                    ))}
+                </select>
+            </div>
+
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 bg-gray-50 rounded-lg min-h-[400px]">
                 {messages.length === 0 && (
@@ -173,7 +203,7 @@ export default function VoiceInterface() {
                 </button>
             </div>
             <p className="text-center text-gray-400 text-xs">
-                {isRecording ? 'Listening... (Max 15s)' : isLoading ? 'Processing...' : 'Tap to Speak'}
+                {isRecording ? 'Listening... (Max 25s)' : isLoading ? 'Processing...' : 'Tap to Speak'}
             </p>
         </div>
     );

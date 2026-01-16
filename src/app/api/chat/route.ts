@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
         const formData = await req.formData();
         const audioFile = formData.get('audio') as File | null;
         let userText = formData.get('text') as string | null;
-        let detectedLanguage = 'en-IN'; // Default language
+        const requestedLanguageCode = formData.get('language') as string || 'en-IN';
+        let detectedLanguage = requestedLanguageCode; // Default to requested
 
 
         if (!process.env.SARVAM_API_KEY || !process.env.GROQ_API_KEY) {
@@ -63,11 +64,18 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. LLM Processing (Groq)
+        const languageNames: Record<string, string> = {
+            'hi-IN': 'Hindi', 'en-IN': 'English', 'bn-IN': 'Bengali', 'gu-IN': 'Gujarati',
+            'kn-IN': 'Kannada', 'ml-IN': 'Malayalam', 'mr-IN': 'Marathi', 'od-IN': 'Odia',
+            'pa-IN': 'Punjabi', 'ta-IN': 'Tamil', 'te-IN': 'Telugu'
+        };
+        const targetLanguageName = languageNames[requestedLanguageCode] || 'English';
+
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 {
                     role: 'system',
-                    content: 'You are a compassionate, empathetic mental health support assistant. Your name is Serenity. Listen carefully to the user, validate their feelings, and offer gentle support. Keep responses concise, warm, and conversational. Do not provide medical diagnosis. If the user seems in danger, advise them to seek professional help. IMPORTANT: Always reply in the same language as the user.'
+                    content: `You are a compassionate, empathetic mental health support assistant named Serenity. Listen carefully, validate feelings, and offer gentle support. Keep responses concise and warm. Do not provide medical diagnosis. IMPORTANT: Reply in ${targetLanguageName} language ONLY. Do not switch languages.`
                 },
                 {
                     role: 'user',
@@ -76,7 +84,7 @@ export async function POST(req: NextRequest) {
             ],
             model: 'llama-3.3-70b-versatile',
             temperature: 0.7,
-            max_tokens: 150,
+            max_tokens: 300,
         });
 
         const agentText = chatCompletion.choices[0]?.message?.content || "I'm listening. Please go on.";
@@ -91,7 +99,7 @@ export async function POST(req: NextRequest) {
             },
             body: JSON.stringify({
                 inputs: [agentText],
-                target_language_code: detectedLanguage,
+                target_language_code: requestedLanguageCode,
                 speaker: 'anushka'
             }),
         });
